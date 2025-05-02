@@ -1,0 +1,2 @@
+2025-04-24 14:53:51 - {"estado":"asignado","motivo":"","salonesAsignados":2,"laboratoriosAsignados":1,"programa":"Fisica1","semestre":1,"facultad":"Fisica"}
+2025-04-24 14:55:07 - {"estado":"asignado","motivo":"","salonesAsignados":1,"laboratoriosAsignados":1,"programa":"Quimica1","semestre":1,"facultad":"Quimica"}

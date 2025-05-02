@@ -1,0 +1,14 @@
+facultades\FacultadMain.class
+programas\ProgramaAcademico.class
+modelo\Solicitud.class
+facultades\Facultad.class
+servidor\Persistencia$1.class
+servidor\Persistencia.class
+servidor\Servidor$1.class
+modelo\Aula.class
+servidor\Servidor.class
+programas\ProgramaAcademico$1.class
+tolerancia\HealthChecker.class
+tolerancia\ServidorReplica.class
+servidor\AsignadorAulas.class
+servidor\ManejadorSolicitudes.class

@@ -1,0 +1,1 @@
+2025-04-24 14:47:53 - {"estado":"asignado","motivo":"","salonesAsignados":2,"laboratoriosAsignados":1,"programa":"Matematicas1","semestre":2,"facultad":"Matematicas"}
