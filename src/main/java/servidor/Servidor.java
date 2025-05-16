@@ -17,7 +17,8 @@ public class Servidor {
     public static void main(String[] args) {
         ZMQ.Context context = ZMQ.context(1);
         ZMQ.Socket socket = context.socket(ZMQ.ROUTER);
-        socket.bind("tcp://*:5555");
+        socket.bind("tcp://0.0.0.0:5555");
+
 
         Map<String, String> facultades = new HashMap<>();
         AsignadorAulas asignador = new AsignadorAulas();

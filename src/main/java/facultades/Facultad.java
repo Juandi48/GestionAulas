@@ -18,18 +18,52 @@ public class Facultad {
 
         ZMQ.Socket envio = context.socket(ZMQ.DEALER);
         envio.setIdentity(("FAC-" + UUID.randomUUID()).getBytes(ZMQ.CHARSET));
-        envio.connect("tcp://" + ipServidor + ":" + PUERTO_SERVIDOR);
 
-        // Inscripción al servidor
-        Map<String, String> inscripcion = new HashMap<>();
-        inscripcion.put("tipo", "inscripcion");
-        inscripcion.put("facultad", nombreFacultad);
+        try {
+            envio.connect("tcp://" + ipServidor + ":" + PUERTO_SERVIDOR);
+            System.out.println("[" + nombreFacultad + "] 🔌 Conectado al servidor en " + ipServidor + ":" + PUERTO_SERVIDOR);
+        } catch (Exception e) {
+            System.err.println("[" + nombreFacultad + "] ❌ No se pudo conectar al servidor: " + e.getMessage());
+            return;
+        }
 
-        envio.send("", ZMQ.SNDMORE);
-        envio.send(gson.toJson(inscripcion));
-        String respuestaInscripcion = envio.recvStr();
+        // Envío de inscripción
+        boolean inscrito = false;
+        int intentos = 0;
 
-        System.out.println("[" + nombreFacultad + "] ✅ Inscripción: " + respuestaInscripcion);
+        while (!inscrito && intentos < 5) {
+            try {
+                Map<String, String> inscripcion = new HashMap<>();
+                inscripcion.put("tipo", "inscripcion");
+                inscripcion.put("facultad", nombreFacultad);
+
+                envio.send("", ZMQ.SNDMORE);
+                envio.send(gson.toJson(inscripcion));
+                System.out.println("[" + nombreFacultad + "] 📤 Solicitud de inscripción enviada...");
+
+                String respuesta = envio.recvStr();
+                System.out.println("[" + nombreFacultad + "] 📥 Respuesta de inscripción: " + respuesta);
+
+                if ("Inscripción exitosa".equals(respuesta)) {
+                    System.out.println("[" + nombreFacultad + "] ✅ Inscripción confirmada.");
+                    inscrito = true;
+                } else {
+                    System.out.println("[" + nombreFacultad + "] ⚠️ Inscripción rechazada o inesperada. Reintentando...");
+                    Thread.sleep(REINTENTO_MS);
+                }
+            } catch (Exception e) {
+                System.err.println("[" + nombreFacultad + "] ❌ Error durante inscripción: " + e.getMessage());
+                try { Thread.sleep(REINTENTO_MS); } catch (InterruptedException ignored) {}
+            }
+            intentos++;
+        }
+
+        if (!inscrito) {
+            System.err.println("[" + nombreFacultad + "] ❌ No se pudo inscribir tras varios intentos. Finalizando.");
+            envio.close();
+            return;
+        }
+
         System.out.println("[" + nombreFacultad + "] 🟢 Esperando solicitudes del ProgramaAcadémico...");
 
         while (!Thread.currentThread().isInterrupted()) {
@@ -44,8 +78,8 @@ public class Facultad {
                 String respuestaServidor = envio.recvStr();
                 System.out.println("[" + nombreFacultad + "] 📤 Respuesta del servidor: " + respuestaServidor);
 
-                recepcion.send(respuestaServidor); // Enviar de vuelta al Programa Académico
-                System.out.println("[" + nombreFacultad + "] ✅ Respuesta enviada al programa.");
+                recepcion.send(respuestaServidor);
+                System.out.println("[" + nombreFacultad + "] ✅ Respuesta enviada al programa académico.");
             } catch (Exception e) {
                 System.err.println("[" + nombreFacultad + "] ❌ Error procesando solicitud: " + e.getMessage());
             }
