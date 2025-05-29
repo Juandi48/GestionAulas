@@ -1,11 +1,13 @@
 package programas;
 
-import org.zeromq.ZMQ;
-import com.google.gson.Gson;
-import modelo.Solicitud;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import org.zeromq.ZMQ;
+
+import com.google.gson.Gson;
+
+import modelo.Solicitud;
 
 public class ProgramaAcademico {
 

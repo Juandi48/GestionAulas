@@ -1,12 +1,15 @@
 package facultades;
 
-import com.google.gson.Gson;
-import modelo.Solicitud;
-import org.zeromq.ZMQ;
-import org.zeromq.ZContext;
-
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.zeromq.ZContext;
+import org.zeromq.ZMQ;
+
+import com.google.gson.Gson;
 
 public class Facultad {
 
@@ -24,14 +27,52 @@ public class Facultad {
 
         try (ZContext context = new ZContext()) {
             ZMQ.Socket socketServidor = context.createSocket(ZMQ.REQ);
-            socketServidor.connect("tcp://" + ipServidor + ":" + PUERTO_SERVIDOR);
 
+            // Lógica de conexión con tolerancia a fallos
+            boolean conectado = false;
+            String rutaConfig = "src/main/replica_config.txt";
+
+            try {
+                socketServidor.connect("tcp://" + ipServidor + ":" + PUERTO_SERVIDOR);
+                conectado = true;
+                System.out.println("🔗 Conectado al servidor principal en " + ipServidor + ":" + PUERTO_SERVIDOR);
+            } catch (Exception e) {
+                System.out.println("❌ No se pudo conectar al servidor principal. Buscando réplica...");
+
+                try (BufferedReader reader = new BufferedReader(new FileReader(rutaConfig))) {
+                    String ip = "localhost";
+                    int puerto = 5556;
+
+                    String linea;
+                    while ((linea = reader.readLine()) != null) {
+                        if (linea.startsWith("IP=")) {
+                            ip = linea.substring(3);
+                        } else if (linea.startsWith("PUERTO=")) {
+                            puerto = Integer.parseInt(linea.substring(7));
+                        }
+                    }
+
+                    System.out.println("🔁 Conectando a réplica en " + ip + ":" + puerto + "...");
+                    socketServidor.connect("tcp://" + ip + ":" + puerto);
+                    conectado = true;
+
+                } catch (IOException ex) {
+                    System.out.println("❌ No se pudo leer la configuración de réplica.");
+                }
+            }
+
+            if (!conectado) {
+                System.out.println("🚫 No se pudo establecer conexión con ningún servidor.");
+                return;
+            }
+
+            // Crear socket de recepción para programas académicos
             ZMQ.Socket socketRecepcion = context.createSocket(ZMQ.REP);
             socketRecepcion.bind("tcp://*:" + PUERTO_RECEPCION);
 
             Gson gson = new Gson();
 
-            // Enviar inscripción al servidor
+            // Enviar inscripción al servidor conectado
             Map<String, String> mensajeInscripcion = new HashMap<>();
             mensajeInscripcion.put("tipo", "inscripcion");
             mensajeInscripcion.put("facultad", nombreFacultad);
@@ -54,7 +95,6 @@ public class Facultad {
                 socketRecepcion.send(respuestaServidor);
             }
 
-            // Cierre
             socketRecepcion.close();
             socketServidor.close();
         }
