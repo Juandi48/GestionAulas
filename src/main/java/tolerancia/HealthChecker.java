@@ -71,8 +71,7 @@ public class HealthChecker {
         }
 
         // Escribir archivo de configuración
-        String rutaConfig = "src/main/replica_config.txt";
-        try (PrintWriter writer = new PrintWriter(rutaConfig)) {
+        try (PrintWriter writer = new PrintWriter("replica_config.txt")) {
             writer.println("IP=" + ipLocal);
             writer.println("PUERTO=" + PUERTO_REPLICA);
             System.out.println("[HealthChecker] 📄 Configuración de réplica escrita en replica_config.txt");

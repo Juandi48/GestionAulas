@@ -27,18 +27,36 @@ public class Facultad {
 
         try (ZContext context = new ZContext()) {
             ZMQ.Socket socketServidor = context.createSocket(ZMQ.REQ);
+            socketServidor.setReceiveTimeOut(3000); // 3 segundos
 
-            // Lógica de conexión con tolerancia a fallos
             boolean conectado = false;
-            String rutaConfig = "src/main/replica_config.txt";
+            String rutaConfig = "replica_config.txt";
 
+            Gson gson = new Gson();
+            Map<String, String> mensajeInscripcion = new HashMap<>();
+            mensajeInscripcion.put("tipo", "inscripcion");
+            mensajeInscripcion.put("facultad", nombreFacultad);
+
+            // Intento con el servidor principal
             try {
                 socketServidor.connect("tcp://" + ipServidor + ":" + PUERTO_SERVIDOR);
-                conectado = true;
-                System.out.println("🔗 Conectado al servidor principal en " + ipServidor + ":" + PUERTO_SERVIDOR);
-            } catch (Exception e) {
-                System.out.println("❌ No se pudo conectar al servidor principal. Buscando réplica...");
+                socketServidor.send(gson.toJson(mensajeInscripcion));
+                String respuesta = socketServidor.recvStr();
 
+                if (respuesta != null) {
+                    System.out.println("🔗 Conectado al servidor principal en " + ipServidor + ":" + PUERTO_SERVIDOR);
+                    System.out.println("✅ Respuesta del servidor: " + respuesta);
+                    conectado = true;
+                } else {
+                    System.out.println("⏳ Sin respuesta del servidor principal. Buscando réplica...");
+                }
+
+            } catch (Exception e) {
+                System.out.println("❌ Error al intentar conectar al servidor principal. Buscando réplica...");
+            }
+
+            // Si no hay conexión, buscar réplica
+            if (!conectado) {
                 try (BufferedReader reader = new BufferedReader(new FileReader(rutaConfig))) {
                     String ip = "localhost";
                     int puerto = 5556;
@@ -52,12 +70,23 @@ public class Facultad {
                         }
                     }
 
-                    System.out.println("🔁 Conectando a réplica en " + ip + ":" + puerto + "...");
+                    socketServidor = context.createSocket(ZMQ.REQ);
+                    socketServidor.setReceiveTimeOut(3000);
                     socketServidor.connect("tcp://" + ip + ":" + puerto);
-                    conectado = true;
+                    System.out.println("🔁 Conectado a réplica en " + ip + ":" + puerto);
 
-                } catch (IOException ex) {
-                    System.out.println("❌ No se pudo leer la configuración de réplica.");
+                    socketServidor.send(gson.toJson(mensajeInscripcion));
+                    String respuestaReplica = socketServidor.recvStr();
+
+                    if (respuestaReplica != null) {
+                        System.out.println("✅ Respuesta del servidor réplica: " + respuestaReplica);
+                        conectado = true;
+                    } else {
+                        System.out.println("❌ No hubo respuesta del servidor réplica.");
+                    }
+
+                } catch (IOException ioEx) {
+                    System.out.println("❌ No se pudo leer replica_config.txt: " + ioEx.getMessage());
                 }
             }
 
@@ -66,22 +95,10 @@ public class Facultad {
                 return;
             }
 
-            // Crear socket de recepción para programas académicos
+            // Abrir socket de recepción
             ZMQ.Socket socketRecepcion = context.createSocket(ZMQ.REP);
             socketRecepcion.bind("tcp://*:" + PUERTO_RECEPCION);
 
-            Gson gson = new Gson();
-
-            // Enviar inscripción al servidor conectado
-            Map<String, String> mensajeInscripcion = new HashMap<>();
-            mensajeInscripcion.put("tipo", "inscripcion");
-            mensajeInscripcion.put("facultad", nombreFacultad);
-
-            socketServidor.send(gson.toJson(mensajeInscripcion));
-            String respuesta = socketServidor.recvStr();
-            System.out.println("✅ Respuesta del servidor: " + respuesta);
-
-            // Esperar solicitudes de programas académicos
             while (!Thread.currentThread().isInterrupted()) {
                 System.out.println("📥 Esperando solicitud del programa académico en puerto " + PUERTO_RECEPCION + "...");
                 String solicitudJson = socketRecepcion.recvStr();

@@ -13,7 +13,7 @@ import modelo.Solicitud;
 
 public class Servidor {
 
-    private static final int PUERTO = 5555;
+    private static final int PUERTO_POR_DEFECTO = 5555;
 
     // Registro de facultades inscritas
     private static final Set<String> facultades = new HashSet<>();
@@ -23,15 +23,25 @@ public class Servidor {
     }
 
     public static void main(String[] args) {
+        // Determinar puerto a usar (argumento opcional)
+        int puerto = PUERTO_POR_DEFECTO;
+        if (args.length > 0) {
+            try {
+                puerto = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.out.println("⚠️ El puerto ingresado no es válido. Usando puerto por defecto: " + PUERTO_POR_DEFECTO);
+            }
+        }
+
         ZMQ.Context context = ZMQ.context(1);
         ZMQ.Socket socket = context.socket(ZMQ.REP);
-        socket.bind("tcp://0.0.0.0:" + PUERTO);
+        socket.bind("tcp://0.0.0.0:" + puerto);
 
         AsignadorAulas asignador = new AsignadorAulas();
         Persistencia persistencia = new Persistencia();
         Gson gson = new Gson();
 
-        System.out.println("Servidor escuchando en el puerto " + PUERTO + "...");
+        System.out.println("🖥️ Servidor escuchando en el puerto " + puerto + "...");
 
         while (!Thread.currentThread().isInterrupted()) {
             String mensaje = socket.recvStr();
