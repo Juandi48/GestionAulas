@@ -1,13 +1,15 @@
 package servidor;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import org.zeromq.ZMQ;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import modelo.Solicitud;
-import org.zeromq.ZMQ;
 
-import java.util.HashSet;
-import java.util.Set;
+import modelo.Solicitud;
 
 public class Servidor {
 
@@ -58,6 +60,10 @@ public class Servidor {
                         respuesta = exito
                                 ? "✅ Aula asignada correctamente a " + solicitud.getPrograma()
                                 : "❌ No se pudo asignar el aula. Recursos insuficientes.";
+                        break;
+
+                    case "salud":
+                        respuesta = "🟢 OK - Servidor activo";
                         break;
 
                     default:

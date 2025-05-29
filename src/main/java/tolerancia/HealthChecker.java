@@ -1,53 +1,44 @@
 package tolerancia;
 
 import org.zeromq.ZMQ;
-import org.zeromq.ZMQ.Poller;
 
 /**
- * HealthChecker que monitorea periódicamente al servidor principal (modo async).
+ * HealthChecker que monitorea periódicamente al servidor principal (modo síncrono).
  * Si no obtiene respuesta, activa automáticamente el servidor réplica.
  */
 public class HealthChecker {
 
     private static final String IP_SERVIDOR = "localhost";
     private static final int PUERTO_SERVIDOR = 5555;
-    private static final int INTERVALO_MS = 10000;  // Tiempo de espera aumentado a 10 segundos
+    private static final int INTERVALO_MS = 10000;  // 10 segundos entre chequeos
 
     public static void main(String[] args) throws InterruptedException {
-        System.out.println("[HealthChecker][async] Iniciando monitoreo al servidor en modo asíncrono...");
+        String ip = args.length > 0 ? args[0] : IP_SERVIDOR;
+        int puerto = args.length > 1 ? Integer.parseInt(args[1]) : PUERTO_SERVIDOR;
+
+        System.out.println("[HealthChecker][sync] Iniciando monitoreo al servidor en modo síncrono...");
 
         while (true) {
             ZMQ.Context context = ZMQ.context(1);
-            ZMQ.Socket socket = context.socket(ZMQ.DEALER);
-            socket.setIdentity("HEALTH".getBytes(ZMQ.CHARSET));  // Asignamos un clientId
+            ZMQ.Socket socket = context.socket(ZMQ.REQ);
 
             try {
-                socket.connect("tcp://" + IP_SERVIDOR + ":" + PUERTO_SERVIDOR);
+                socket.connect("tcp://" + ip + ":" + puerto);
 
-                // Enviar health-check con el clientId y frame vacío
-                socket.send("", ZMQ.SNDMORE);  // Primer frame vacío
-                socket.send("health-check");  // Segundo frame con el mensaje
+                // Enviar mensaje dummy (tipo JSON válido)
+                String mensajeSalud = "{\"tipo\":\"salud\"}";
+                socket.send(mensajeSalud);
 
-                // Crear un poller para manejar el timeout
-                Poller poller = context.poller(1);  // Solo un socket
-                poller.register(socket, Poller.POLLIN);
+                // Esperar respuesta (bloqueante pero con timeout)
+                socket.setReceiveTimeOut(INTERVALO_MS);
+                String respuesta = socket.recvStr();
 
-                // Verificar si la respuesta llegó antes del timeout
-                int rc = poller.poll(INTERVALO_MS);  // Espera hasta INTERVALO_MS milisegundos
-
-                if (rc == 0) {
-                    // No se recibió respuesta en el tiempo establecido
+                if (respuesta != null) {
+                    System.out.println("[HealthChecker] ✅ Servidor activo. Respuesta: " + respuesta);
+                } else {
                     System.out.println("[HealthChecker] ❌ El servidor no respondió. Activando réplica...");
                     Runtime.getRuntime().exec("java tolerancia.ServidorReplica");
                     break;
-                }
-
-                // Si respondieron, simplemente verificamos si recibimos algo
-                String respuesta = socket.recvStr();
-                if (respuesta != null) {
-                    System.out.println("[HealthChecker] ✅ Servidor activo. Respuesta recibida: " + respuesta);
-                } else {
-                    System.out.println("[HealthChecker] ❌ El servidor no respondió correctamente.");
                 }
 
             } catch (Exception e) {
@@ -57,7 +48,6 @@ public class HealthChecker {
                 context.term();
             }
 
-            // Esperar antes de realizar el siguiente intento
             Thread.sleep(INTERVALO_MS);
         }
     }

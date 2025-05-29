@@ -95,7 +95,7 @@ Cada proceso se lanza desde un script contenido en la carpeta `chmod +x run/*.sh
 # ❤️ Iniciar el verificador de salud
 
 ```bash
-./run/health_check.sh
+./run/health_check.sh 192.168.1.6 5555
 ```
 
 > 💡 Asegúrate de que los puertos estén abiertos entre máquinas y se mantenga la coherencia en los nombres de facultades y programas.
